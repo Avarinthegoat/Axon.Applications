@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXON | Applications Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #171717; }
+        .axon-header { font-family: 'Bodoni Moda', serif; }
+        .gold-bg { background-color: #CFA050; }
+        .gold-text { color: #CFA050; }
+        .hidden { display: none; }
+        .glass-card { border: 1px solid #f0f0f0; transition: all 0.3s ease; border-radius: 2rem; }
+        .glass-card:hover { border-color: #CFA050; transform: translateY(-5px); }
+    </style>
+</head>
+<body>
+
+    <nav class="flex justify-between items-center px-10 py-8 border-b border-gray-50 bg-white sticky top-0 z-50">
+        <div class="axon-header text-3xl italic tracking-tighter">
+            AXON <span class="font-light text-[10px] tracking-[0.5em] uppercase not-italic ml-2 text-gray-300">Applications</span>
+        </div>
+        <div id="user-display" class="text-[10px] font-black uppercase tracking-widest text-gray-400"></div>
+    </nav>
+
+    <div id="login-screen" class="max-w-md mx-auto mt-32 px-6 text-center">
+        <h2 class="text-4xl font-black tracking-tighter mb-4 uppercase italic">Identity</h2>
+        <p class="text-gray-400 text-sm mb-10">Enter your Discord username to access the portal.</p>
+        <input type="text" id="username-input" placeholder="e.g. Avarin" class="w-full p-5 border border-gray-100 rounded-2xl mb-4 focus:border-[#CFA050] outline-none font-bold">
+        <button onclick="saveUser()" class="w-full gold-bg text-white font-black py-5 rounded-2xl hover:bg-black transition uppercase text-xs tracking-widest">Enter Terminal</button>
+    </div>
+
+    <div id="main-hub" class="max-w-6xl mx-auto py-20 px-8 hidden">
+        <div class="grid md:grid-cols-3 gap-8" id="role-grid">
+            </div>
+
+        <div class="mt-24 border-t border-gray-100 pt-16">
+            <h3 class="text-[10px] font-black tracking-[0.4em] uppercase text-gray-300 mb-8">Active Submissions</h3>
+            <div id="my-apps" class="space-y-4 text-center py-10 border-2 border-dashed border-gray-50 rounded-[2rem]">
+                <p class="text-xs text-gray-300">No data found in local storage.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-md z-[100] flex items-center justify-center hidden p-6">
+        <div class="bg-white w-full max-w-xl rounded-[3rem] p-12 shadow-2xl relative">
+            <button onclick="closeForm()" class="absolute top-10 right-10 text-gray-300 hover:text-black font-bold">CLOSE</button>
+            <h2 id="form-role-title" class="text-3xl font-black tracking-tighter uppercase mb-8 gold-text">Application</h2>
+            
+            <div class="space-y-6">
+                <input type="number" id="age" placeholder="Your Age" class="w-full p-4 bg-gray-50 rounded-xl outline-none border-none">
+                <textarea id="xp" placeholder="Previous Experience" rows="3" class="w-full p-4 bg-gray-50 rounded-xl outline-none border-none"></textarea>
+                <textarea id="desc" placeholder="Why should we choose you?" rows="4" class="w-full p-4 bg-gray-50 rounded-xl outline-none border-none"></textarea>
+                <button id="submit-btn" onclick="sendToDiscord()" class="w-full gold-bg text-white font-black py-5 rounded-2xl uppercase text-xs tracking-widest">Transmit Application</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1485339953176121546/erz1FOdh3FRwG9QUF75_16eUTJ_tBqNMPKaHPQ2YTT2bMciJaATmaeHU8cVyxbNKu9aU"; // PASTE YOUR URL HERE
+        let user = localStorage.getItem('axon_username');
+        let currentRole = "";
+
+        const roles = [
+            { id: "social", name: "Social Media Manager", open: true },
+            { id: "support", name: "Support Agent", open: true },
+            { id: "mod", name: "Moderation", open: true }
+        ];
+
+        function saveUser() {
+            const val = document.getElementById('username-input').value;
+            if(!val) return;
+            localStorage.setItem('axon_username', val);
+            location.reload();
+        }
+
+        if(user) {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-hub').classList.remove('hidden');
+            document.getElementById('user-display').innerText = `Logged in as: ${user}`;
+            renderRoles();
+            renderSavedApps();
+        }
+
+        function renderRoles() {
+            const grid = document.getElementById('role-grid');
+            grid.innerHTML = roles.map(r => `
+                <div class="glass-card p-12">
+                    <h3 class="text-[10px] font-black tracking-[0.3em] text-gray-400 mb-6 uppercase">${r.name}</h3>
+                    <p class="text-xs text-green-500 font-bold mb-10 tracking-widest">STATUS: OPEN</p>
+                    <button onclick="openForm('${r.name}')" class="w-full py-4 bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:gold-bg transition">Apply Now</button>
+                </div>
+            `).join('');
+        }
+
+        function openForm(name) {
+            currentRole = name;
+            document.getElementById('form-role-title').innerText = name;
+            document.getElementById('form-overlay').classList.remove('hidden');
+        }
+
+        function closeForm() {
+            document.getElementById('form-overlay').classList.add('hidden');
+        }
+
+        function sendToDiscord() {
+            const btn = document.getElementById('submit-btn');
+            const age = document.getElementById('age').value;
+            const xp = document.getElementById('xp').value;
+            const desc = document.getElementById('desc').value;
+
+            if(!age || !xp || !desc) return alert("Fill all fields.");
+            btn.innerText = "TRANSMITTING...";
+            btn.disabled = true;
+
+            const payload = {
+                username: "AXON RECRUITMENT",
+                embeds: [{
+                    title: `NEW APPLICATION: ${currentRole}`,
+                    color: 13606992, // Gold hex
+                    fields: [
+                        { name: "Applicant", value: user, inline: true },
+                        { name: "Age", value: age, inline: true },
+                        { name: "Experience", value: xp },
+                        { name: "Description", value: desc }
+                    ],
+                    footer: { text: "Axon Hosting Management System" },
+                    timestamp: new Date()
+                }]
+            };
+
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                const myApps = JSON.parse(localStorage.getItem('axon_submissions') || "[]");
+                myApps.push({ role: currentRole, date: new Date().toLocaleDateString(), status: "PENDING (Check Discord)" });
+                localStorage.setItem('axon_submissions', JSON.stringify(myApps));
+                alert("Application sent to AXON Staff!");
+                location.reload();
+            });
+        }
+
+        function renderSavedApps() {
+            const container = document.getElementById('my-apps');
+            const data = JSON.parse(localStorage.getItem('axon_submissions') || "[]");
+            if(data.length > 0) {
+                container.innerHTML = data.map(d => `
+                    <div class="flex justify-between items-center bg-gray-50 p-6 rounded-2xl mx-auto max-w-2xl border border-gray-100">
+                        <div class="text-left">
+                            <p class="text-[10px] font-black uppercase tracking-widest">${d.role}</p>
+                            <p class="text-[9px] text-gray-400">${d.date}</p>
+                        </div>
+                        <span class="text-[9px] font-black px-4 py-1 rounded-full bg-white border border-gray-100">${d.status}</span>
+                    </div>
+                `).join('');
+            }
+        }
+    </script>
+</body>
+</html>
