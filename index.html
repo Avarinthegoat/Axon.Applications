@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXON | Recruitment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1a;
+            --card: #111827;
+            --accent: #3b82f6;
+            --text: #f9fafb;
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text);
+            margin: 0;
+        }
+        .nav-blur {
+            background: rgba(10, 15, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-primary {
+            background-color: var(--accent);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+        .glass-card {
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .hidden { display: none !important; }
+        input, textarea {
+            background: #1f2937 !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="nav-blur sticky top-0 z-50 px-8 py-6 flex justify-between items-center">
+        <h1 class="text-2xl font-black tracking-tighter italic text-blue-500">AXON HOSTING</h1>
+        <div id="nav-user" class="flex items-center gap-4"></div>
+    </nav>
+
+    <main id="view-login" class="max-w-md mx-auto mt-40 px-6 text-center">
+        <h2 class="text-4xl font-extrabold mb-2">Welcome</h2>
+        <p class="text-gray-400 text-sm mb-8">Enter your Discord username to continue</p>
+        <input type="text" id="input-username" placeholder="Username" class="w-full p-4 rounded-xl mb-4 outline-none focus:ring-2 ring-blue-500">
+        <button onclick="login()" class="btn-primary w-full py-4 rounded-xl font-bold uppercase text-xs tracking-widest">Initialise Session</button>
+    </main>
+
+    <main id="view-hub" class="max-w-6xl mx-auto py-16 px-6 hidden">
+        <div id="app-grid" class="grid md:grid-cols-3 gap-6 mb-20">
+            </div>
+
+        <div class="border-t border-gray-800 pt-16">
+            <h3 class="text-xs font-bold uppercase tracking-[0.3em] text-gray-500 mb-8">Application Status</h3>
+            <div id="status-feed" class="space-y-3">
+                <p class="text-gray-600 text-sm italic">No active applications found in local storage.</p>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-admin" class="max-w-4xl mx-auto py-16 px-6 hidden">
+        <div class="flex justify-between items-center mb-12">
+            <h2 class="text-3xl font-black italic">DIRECTOR PANEL</h2>
+            <div id="admin-toggles" class="flex gap-2"></div>
+        </div>
+        <div id="admin-feed" class="space-y-4"></div>
+    </main>
+
+    <div id="modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center hidden p-4">
+        <div class="bg-[#111827] w-full max-w-lg p-8 rounded-3xl border border-gray-800">
+            <h2 id="modal-role" class="text-2xl font-black mb-6 text-blue-500"></h2>
+            <div class="space-y-4">
+                <input type="number" id="field-age" placeholder="Age" class="w-full p-4 rounded-xl outline-none">
+                <textarea id="field-xp" placeholder="Experience" rows="3" class="w-full p-4 rounded-xl outline-none"></textarea>
+                <textarea id="field-desc" placeholder="Why join Axon?" rows="4" class="w-full p-4 rounded-xl outline-none"></textarea>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="closeModal()" class="flex-1 py-4 bg-gray-800 rounded-xl font-bold text-xs uppercase">Cancel</button>
+                    <button onclick="submitApp()" class="flex-[2] btn-primary py-4 rounded-xl font-bold text-xs uppercase">Submit Application</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIC ENGINE ---
+        let user = localStorage.getItem('axon_session');
+        let currentRole = "";
+
+        // Default Config
+        let config = JSON.parse(localStorage.getItem('axon_config')) || {
+            'Support Agent': true,
+            'Social Media Manager': true,
+            'Moderation': true
+        };
+
+        // All local applications
+        let apps = JSON.parse(localStorage.getItem('axon_db')) || [];
+
+        function login() {
+            const val = document.getElementById('input-username').value;
+            if(!val) return;
+            localStorage.setItem('axon_session', val);
+            location.reload();
+        }
+
+        function logout() {
+            localStorage.removeItem('axon_session');
+            location.reload();
+        }
+
+        window.onload = () => {
+            if(user) {
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('view-hub').classList.remove('hidden');
+                renderNav();
+                renderHub();
+                renderStatus();
+            }
+        };
+
+        function renderNav() {
+            const container = document.getElementById('nav-user');
+            const adminBtn = (user === "Avarin") ? `<button onclick="toggleAdmin()" class="text-[10px] font-bold border border-blue-500/30 px-4 py-2 rounded-lg text-blue-400 hover:bg-blue-500 hover:text-white transition">DASHBOARD</button>` : '';
+            container.innerHTML = `
+                ${adminBtn}
+                <div class="text-right">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">${user}</p>
+                    <button onclick="logout()" class="text-[10px] font-bold text-red-400 hover:underline uppercase">Logout</button>
+                </div>
+            `;
+        }
+
+        function toggleAdmin() {
+            const hub = document.getElementById('view-hub');
+            const adm = document.getElementById('view-admin');
+            hub.classList.toggle('hidden');
+            adm.classList.toggle('hidden');
+            if(!adm.classList.contains('hidden')) renderAdmin();
+        }
+
+        function renderHub() {
+            const grid = document.getElementById('app-grid');
+            const roles = Object.keys(config);
+            grid.innerHTML = roles.map(r => `
+                <div class="glass-card p-10 text-center ${!config[r] ? 'opacity-40' : ''}">
+                    <h4 class="text-xs font-bold text-gray-500 tracking-widest uppercase mb-4">${r}</h4>
+                    <p class="text-[10px] font-black mb-8 ${config[r] ? 'text-blue-400' : 'text-red-500'}">
+                        STATUS: ${config[r] ? 'OPEN' : 'CLOSED'}
+                    </p>
+                    <button onclick="openModal('${r}')" ${!config[r] ? 'disabled' : ''} 
+                        class="w-full py-4 rounded-xl font-bold text-[10px] uppercase tracking-widest transition 
+                        ${config[r] ? 'btn-primary' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}">
+                        ${config[r] ? 'Apply Now' : 'Closed'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openModal(role) {
+            currentRole = role;
+            document.getElementById('modal-role').innerText = role;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function submitApp() {
+            const newApp = {
+                id: Date.now(),
+                applicant: user,
+                role: currentRole,
+                age: document.getElementById('field-age').value,
+                xp: document.getElementById('field-xp').value,
+                desc: document.getElementById('field-desc').value,
+                status: 'Pending'
+            };
+            if(!newApp.age || !newApp.xp || !newApp.desc) return alert("Fill all fields.");
+            apps.push(newApp);
+            localStorage.setItem('axon_db', JSON.stringify(apps));
+            alert("Application transmitted.");
+            location.reload();
+        }
+
+        function renderStatus() {
+            const feed = document.getElementById('status-feed');
+            const myApps = apps.filter(a => a.applicant === user);
+            if(myApps.length > 0) {
+                feed.innerHTML = myApps.map(a => `
+                    <div class="flex justify-between items-center p-5 bg-gray-900/50 rounded-2xl border border-gray-800">
+                        <span class="text-xs font-bold text-gray-400 uppercase">${a.role}</span>
+                        <span class="text-[10px] font-black px-4 py-2 rounded-lg bg-gray-800 
+                            ${a.status === 'Approved' ? 'text-green-400 border border-green-500/20' : a.status === 'Denied' ? 'text-red-400' : 'text-blue-400'}">
+                            ${a.status === 'Approved' ? 'ACCEPTED - CHECK DC SERVER' : a.status.toUpperCase()}
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- ADMIN PANEL ---
+        function renderAdmin() {
+            const feed = document.getElementById('admin-feed');
+            const toggles = document.getElementById('admin-toggles');
+            
+            toggles.innerHTML = Object.keys(config).map(r => `
+                <button onclick="toggleRole('${r}')" class="text-[9px] font-bold px-3 py-1.5 rounded-md border 
+                ${config[r] ? 'border-blue-500 text-blue-400' : 'border-gray-700 text-gray-600'}">
+                    ${r.split(' ')[0]}
+                </button>
+            `).join('');
+
+            const pending = apps.filter(a => a.status === 'Pending');
+            feed.innerHTML = pending.length === 0 ? `<p class="text-center py-20 text-gray-600 text-xs">NO PENDING TRANSMISSIONS</p>` :
+            pending.map(a => `
+                <div class="p-8 glass-card">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h4 class="text-xl font-black italic tracking-tight">${a.applicant}</h4>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">${a.role}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="updateStatus(${a.id}, 'Denied')" class="px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-bold rounded-lg hover:bg-red-500 hover:text-white transition">DENY</button>
+                            <button onclick="updateStatus(${a.id}, 'Approved')" class="px-4 py-2 bg-green-500/10 text-green-500 text-[10px] font-bold rounded-lg hover:bg-green-500 hover:text-white transition">APPROVE</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-8 text-xs mb-4">
+                        <div class="p-4 bg-gray-800/50 rounded-xl"><p class="text-gray-500 mb-1">AGE</p><p class="font-bold text-blue-400">${a.age}</p></div>
+                        <div class="p-4 bg-gray-800/50 rounded-xl"><p class="text-gray-500 mb-1">XP</p><p class="font-bold text-blue-400">${a.xp}</p></div>
+                    </div>
+                    <div class="p-4 bg-gray-800/50 rounded-xl"><p class="text-gray-500 mb-1">DESCRIPTION</p><p class="text-xs text-gray-300 leading-relaxed">${a.desc}</p></div>
+                </div>
+            `).join('');
+        }
+
+        function toggleRole(r) {
+            config[r] = !config[r];
+            localStorage.setItem('axon_config', JSON.stringify(config));
+            renderAdmin();
+            renderHub();
+        }
+
+        function updateStatus(id, s) {
+            apps = apps.map(a => a.id === id ? {...a, status: s} : a);
+            localStorage.setItem('axon_db', JSON.stringify(apps));
+            renderAdmin();
+            renderStatus();
+        }
+    </script>
+</body>
+</html>
